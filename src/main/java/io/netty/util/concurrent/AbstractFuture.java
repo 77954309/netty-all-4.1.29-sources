@@ -26,13 +26,22 @@ import java.util.concurrent.TimeoutException;
  * @param <V>
  */
 public abstract class AbstractFuture<V> implements Future<V> {
-
+    /**
+     * 同步获取io结果
+     * @return
+     * @throws InterruptedException
+     * @throws ExecutionException
+     */
     @Override
     public V get() throws InterruptedException, ExecutionException {
+        /**
+         * 无限期阻塞，当I/O操作完成后会被notify()
+         */
         await();
-
+        //检查异常
         Throwable cause = cause();
         if (cause == null) {
+            //获取结果
             return getNow();
         }
         if (cause instanceof CancellationException) {
@@ -41,6 +50,15 @@ public abstract class AbstractFuture<V> implements Future<V> {
         throw new ExecutionException(cause);
     }
 
+    /**
+     * 获取超时方法
+     * @param timeout
+     * @param unit
+     * @return
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws TimeoutException
+     */
     @Override
     public V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
         if (await(timeout, unit)) {
