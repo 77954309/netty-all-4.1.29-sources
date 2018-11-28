@@ -27,6 +27,9 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.ScatteringByteChannel;
 
+/**
+ * 基于内存池的堆外缓冲字节数组
+ */
 final class PooledDirectByteBuf extends PooledByteBuf<ByteBuffer> {
 
     private static final Recycler<PooledDirectByteBuf> RECYCLER = new Recycler<PooledDirectByteBuf>() {
@@ -36,6 +39,12 @@ final class PooledDirectByteBuf extends PooledByteBuf<ByteBuffer> {
         }
     };
 
+    /**
+     * 基于内存池的实现，创建对象不能直接new
+     *
+     * @param maxCapacity
+     * @return
+     */
     static PooledDirectByteBuf newInstance(int maxCapacity) {
         PooledDirectByteBuf buf = RECYCLER.get();
         buf.reuse(maxCapacity);
@@ -388,8 +397,15 @@ final class PooledDirectByteBuf extends PooledByteBuf<ByteBuffer> {
         }
     }
 
+    /**
+     * 复制新的实例
+     * @param index
+     * @param length
+     * @return
+     */
     @Override
     public ByteBuf copy(int index, int length) {
+        //索引和长度合法性
         checkIndex(index, length);
         ByteBuf copy = alloc().directBuffer(length, maxCapacity());
         copy.writeBytes(this, index, length);

@@ -28,6 +28,8 @@ import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.ScatteringByteChannel;
 
 /**
+ * UnpooledDirectByteBuf 和UnpooledHeapByteBuf实现原理相同
+ * 不同之处内部缓冲区由java.nio.DirectByteBuffer
  * A NIO {@link ByteBuffer} based buffer. It is recommended to use
  * {@link UnpooledByteBufAllocator#directBuffer(int, int)}, {@link Unpooled#directBuffer(int)} and
  * {@link Unpooled#wrappedBuffer(ByteBuffer)} instead of calling the constructor explicitly.

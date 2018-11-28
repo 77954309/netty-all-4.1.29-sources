@@ -16,6 +16,10 @@
 
 package io.netty.buffer;
 
+/**
+ * page内存分配，切分成多个存储块
+ * @param <T>
+ */
 final class PoolSubpage<T> implements PoolSubpageMetric {
 
     final PoolChunk<T> chunk;

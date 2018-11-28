@@ -97,6 +97,11 @@ public abstract class AbstractByteBuf extends ByteBuf {
         return readerIndex;
     }
 
+    /**
+     * 读索引
+     * @param readerIndex
+     * @return
+     */
     @Override
     public ByteBuf readerIndex(int readerIndex) {
         if (readerIndex < 0 || readerIndex > writerIndex) {
@@ -123,6 +128,12 @@ public abstract class AbstractByteBuf extends ByteBuf {
         return this;
     }
 
+    /**
+     * 设置新的容量值
+     * @param readerIndex
+     * @param writerIndex
+     * @return
+     */
     @Override
     public ByteBuf setIndex(int readerIndex, int writerIndex) {
         if (readerIndex < 0 || readerIndex > writerIndex || writerIndex > capacity()) {
@@ -199,8 +210,17 @@ public abstract class AbstractByteBuf extends ByteBuf {
         return this;
     }
 
+    /**
+     * 重用缓冲区
+     * 需要大量复制操作，时间换空间
+     * @return
+     */
     @Override
     public ByteBuf discardReadBytes() {
+        /**
+         * 检查buffer是否已经被释放
+         * 引用计数是否为0
+         */
         ensureAccessible();
         if (readerIndex == 0) {
             return this;
@@ -209,6 +229,10 @@ public abstract class AbstractByteBuf extends ByteBuf {
         if (readerIndex != writerIndex) {
             setBytes(0, this, readerIndex, writerIndex - readerIndex);
             writerIndex -= readerIndex;
+            /**
+             * 调整markedReaderIndex和markedWriterIndex
+             *
+             */
             adjustMarkers(readerIndex);
             readerIndex = 0;
         } else {
@@ -240,8 +264,14 @@ public abstract class AbstractByteBuf extends ByteBuf {
         return this;
     }
 
+    /**
+     * 调整读写标记
+     *
+     * @param decrement
+     */
     protected final void adjustMarkers(int decrement) {
         int markedReaderIndex = this.markedReaderIndex;
+
         if (markedReaderIndex <= decrement) {
             this.markedReaderIndex = 0;
             int markedWriterIndex = this.markedWriterIndex;
@@ -271,13 +301,18 @@ public abstract class AbstractByteBuf extends ByteBuf {
         if (minWritableBytes <= writableBytes()) {
             return;
         }
-
+        /**
+         * 动态扩展最大字节
+         */
         if (minWritableBytes > maxCapacity - writerIndex) {
             throw new IndexOutOfBoundsException(String.format(
                     "writerIndex(%d) + minWritableBytes(%d) exceeds maxCapacity(%d): %s",
                     writerIndex, minWritableBytes, maxCapacity, this));
         }
 
+        /**
+         *动态扩展缓冲区
+         */
         // Normalize the current capacity to the power of 2.
         int newCapacity = alloc().calculateNewCapacity(writerIndex + minWritableBytes, maxCapacity);
 
@@ -838,8 +873,15 @@ public abstract class AbstractByteBuf extends ByteBuf {
         return Double.longBitsToDouble(readLong());
     }
 
+    /**
+     * 读操作
+     * @param length the number of bytes to transfer
+     *
+     * @return
+     */
     @Override
     public ByteBuf readBytes(int length) {
+        //缓冲区可用空间校验
         checkReadableBytes(length);
         if (length == 0) {
             return Unpooled.EMPTY_BUFFER;
@@ -847,6 +889,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
 
         ByteBuf buf = alloc().buffer(length, maxCapacity);
         buf.writeBytes(this, readerIndex, length);
+        //读索引进行递增
         readerIndex += length;
         return buf;
     }
@@ -941,8 +984,14 @@ public abstract class AbstractByteBuf extends ByteBuf {
         return this;
     }
 
+    /**
+     * 丢弃非法数据
+     * @param length
+     * @return
+     */
     @Override
     public ByteBuf skipBytes(int length) {
+        //检查合法性
         checkReadableBytes(length);
         readerIndex += length;
         return this;
@@ -1043,10 +1092,23 @@ public abstract class AbstractByteBuf extends ByteBuf {
         return this;
     }
 
+    /**
+     * 写操作
+     * 支持动态扩展缓冲区
+     * JDK ByteBuffer缺点 无法预判编码和解码的pojo对象长度
+     *
+     * @param src
+     * @param srcIndex the first index of the source
+     * @param length   the number of bytes to transfer
+     *
+     * @return
+     */
     @Override
     public ByteBuf writeBytes(byte[] src, int srcIndex, int length) {
+        //检查写入长度合法性检验
         ensureWritable(length);
         setBytes(writerIndex, src, srcIndex, length);
+
         writerIndex += length;
         return this;
     }
@@ -1352,6 +1414,11 @@ public abstract class AbstractByteBuf extends ByteBuf {
         checkIndex(index, 1);
     }
 
+    /**
+     * 索引和长度合法性
+     * @param index
+     * @param fieldLength
+     */
     protected final void checkIndex(int index, int fieldLength) {
         ensureAccessible();
         checkIndex0(index, fieldLength);
@@ -1364,6 +1431,13 @@ public abstract class AbstractByteBuf extends ByteBuf {
         }
     }
 
+    /**
+     * 合法性校验
+     * @param index
+     * @param length
+     * @param srcIndex
+     * @param srcCapacity
+     */
     protected final void checkSrcIndex(int index, int length, int srcIndex, int srcCapacity) {
         checkIndex(index, length);
         if (isOutOfBounds(srcIndex, length, srcCapacity)) {
@@ -1392,6 +1466,10 @@ public abstract class AbstractByteBuf extends ByteBuf {
         checkReadableBytes0(minimumReadableBytes);
     }
 
+    /**
+     * 容量检验
+     * @param newCapacity
+     */
     protected final void checkNewCapacity(int newCapacity) {
         ensureAccessible();
         if (newCapacity < 0 || newCapacity > maxCapacity()) {
@@ -1411,6 +1489,10 @@ public abstract class AbstractByteBuf extends ByteBuf {
     /**
      * Should be called by every method that tries to access the buffers content to check
      * if the buffer was released before.
+     *
+     * 检查buffer是否已经被释放
+     * 引用计数是否为0
+     *
      */
     protected final void ensureAccessible() {
         if (checkAccessible && refCnt() == 0) {

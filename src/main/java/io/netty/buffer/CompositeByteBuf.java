@@ -40,6 +40,7 @@ import static io.netty.util.internal.ObjectUtil.checkNotNull;
  * A virtual buffer which shows multiple buffers as a single merged buffer.  It is recommended to use
  * {@link ByteBufAllocator#compositeBuffer()} or {@link Unpooled#wrappedBuffer(ByteBuf...)} instead of calling the
  * constructor explicitly.
+ * 组装多个ByteBuf实例
  */
 public class CompositeByteBuf extends AbstractReferenceCountedByteBuf implements Iterable<ByteBuf> {
 
@@ -48,6 +49,7 @@ public class CompositeByteBuf extends AbstractReferenceCountedByteBuf implements
 
     private final ByteBufAllocator alloc;
     private final boolean direct;
+    //集合实例对象
     private final ComponentList components;
     private final int maxNumComponents;
 
@@ -192,6 +194,7 @@ public class CompositeByteBuf extends AbstractReferenceCountedByteBuf implements
      * {@link ByteBuf#release()} ownership of {@code buffer} is transfered to this {@link CompositeByteBuf}.
      * @param buffer the {@link ByteBuf} to add. {@link ByteBuf#release()} ownership is transfered to this
      * {@link CompositeByteBuf}.
+     *               新增ByteBuf
      */
     public CompositeByteBuf addComponent(boolean increaseWriterIndex, ByteBuf buffer) {
         checkNotNull(buffer, "buffer");
@@ -465,13 +468,15 @@ public class CompositeByteBuf extends AbstractReferenceCountedByteBuf implements
      * Remove the {@link ByteBuf} from the given index.
      *
      * @param cIndex the index on from which the {@link ByteBuf} will be remove
+     *               删除ByteBuf
      */
     public CompositeByteBuf removeComponent(int cIndex) {
         checkComponentIndex(cIndex);
         Component comp = components.remove(cIndex);
         comp.freeIfNecessary();
         if (comp.length > 0) {
-            // Only need to call updateComponentOffsets if the length was > 0
+            // Only need to call updateComponentOffsets if the length was > 0/
+            //更新各个Component的索引偏移量
             updateComponentOffsets(cIndex);
         }
         return this;

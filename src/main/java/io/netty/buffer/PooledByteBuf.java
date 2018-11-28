@@ -32,6 +32,9 @@ abstract class PooledByteBuf<T> extends AbstractReferenceCountedByteBuf {
     protected int offset;
     protected int length;
     int maxLength;
+    /**
+     * PoolArena
+     */
     PoolThreadCache cache;
     private ByteBuffer tmpNioBuf;
     private ByteBufAllocator allocator;
@@ -67,6 +70,7 @@ abstract class PooledByteBuf<T> extends AbstractReferenceCountedByteBuf {
 
     /**
      * Method must be called before reuse this {@link PooledByteBufAllocator}
+     * 初始化
      */
     final void reuse(int maxCapacity) {
         maxCapacity(maxCapacity);

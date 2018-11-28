@@ -28,6 +28,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.Math.max;
 
+/**
+ * 由多个Chunk组成的大块内存区域，而每个Chunk则由一个或者多个Page组成
+ * @param <T>
+ */
 abstract class PoolArena<T> implements PoolArenaMetric {
     static final boolean HAS_UNSAFE = PlatformDependent.hasUnsafe();
 

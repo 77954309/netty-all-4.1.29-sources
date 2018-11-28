@@ -39,7 +39,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class PoolThreadCache {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(PoolThreadCache.class);
-
+    /**
+     * 在内存管理中Memory Arena是指内存中一大块连续的区域，PoolArena是netty内存池实现类
+     */
     final PoolArena<byte[]> heapArena;
     final PoolArena<ByteBuffer> directArena;
 

@@ -23,10 +23,12 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import static io.netty.util.internal.ObjectUtil.checkPositive;
 
 /**
+ * 对引用进行计数，用于跟踪对象的分配和销毁，做自动内存回收
  * Abstract base class for {@link ByteBuf} implementations that count references.
  */
 public abstract class AbstractReferenceCountedByteBuf extends AbstractByteBuf {
 
+    //更新操作
     private static final AtomicIntegerFieldUpdater<AbstractReferenceCountedByteBuf> refCntUpdater =
             AtomicIntegerFieldUpdater.newUpdater(AbstractReferenceCountedByteBuf.class, "refCnt");
 
@@ -59,6 +61,11 @@ public abstract class AbstractReferenceCountedByteBuf extends AbstractByteBuf {
         return retain0(checkPositive(increment, "increment"));
     }
 
+    /**
+     * 引用计数
+     * @param increment
+     * @return
+     */
     private ByteBuf retain0(final int increment) {
         int oldRef = refCntUpdater.getAndAdd(this, increment);
         if (oldRef <= 0 || oldRef + increment < oldRef) {
@@ -89,9 +96,18 @@ public abstract class AbstractReferenceCountedByteBuf extends AbstractByteBuf {
         return release0(checkPositive(decrement, "decrement"));
     }
 
+    /**
+     * 释放函数
+     * @param decrement
+     * @return
+     */
     private boolean release0(int decrement) {
         int oldRef = refCntUpdater.getAndAdd(this, -decrement);
+        /**
+         * 申请和释放相等
+         */
         if (oldRef == decrement) {
+            //释放对象
             deallocate();
             return true;
         } else if (oldRef < decrement || oldRef - decrement > oldRef) {

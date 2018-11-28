@@ -106,6 +106,7 @@ public final class ByteBufUtil {
     /**
      * Returns a <a href="http://en.wikipedia.org/wiki/Hex_dump">hex dump</a>
      * of the specified buffer's sub-region.
+     *
      */
     public static String hexDump(ByteBuf buffer, int fromIndex, int length) {
         return HexUtil.hexDump(buffer, fromIndex, length);

@@ -244,6 +244,17 @@ import java.nio.charset.UnsupportedCharsetException;
  *
  * Please refer to {@link ByteBufInputStream} and
  * {@link ByteBufOutputStream}.
+ *
+ * 内存角度ByteBuf可以分为两类：
+ * 堆内存（HeapByteBuf）字节缓冲区，特点内存分配和回收速度快，
+ * 可以被JVM自动回收，缺点就是如果进行Socket的I/O读写，需要额外做一次内存复制，
+ * 将堆内存对应的缓冲区复制到内核Channel中，性能下降。
+ *
+ * 直接内存（DirectByteBuf）字节缓存区，非堆内存，它在堆外进行内存分配，相对于堆内存，
+ * 它的分配和回收速度慢，但它写入或者Socket Channel中读取时，少一次内存复制，速度快
+ *
+ * I/O通信线程的读写缓存使用DirectByteBuf,后端业务模块用HeapByteBuf
+ *
  */
 @SuppressWarnings("ClassMayBeInterface")
 public abstract class ByteBuf implements ReferenceCounted, Comparable<ByteBuf> {

@@ -31,14 +31,20 @@ import java.nio.channels.ScatteringByteChannel;
 import static io.netty.util.internal.ObjectUtil.checkNotNull;
 
 /**
+ * 堆内存进行内存分配的字节缓冲区
+ * 不是基于对象池的，每次io读写都会创建一个新的UnpooledHeapByteBuf，频繁的进行大块内存的分配和回收性能会造成一定的影响
+ * 相比堆外内存的申请和释放，成本低
+ * ByteBuf 以set和get读写缓存方法不会修改读写索引
  * Big endian Java heap buffer implementation. It is recommended to use
  * {@link UnpooledByteBufAllocator#heapBuffer(int, int)}, {@link Unpooled#buffer(int)} and
  * {@link Unpooled#wrappedBuffer(byte[])} instead of calling the constructor explicitly.
  */
 public class UnpooledHeapByteBuf extends AbstractReferenceCountedByteBuf {
-
+    //内存分配
     private final ByteBufAllocator alloc;
+    //缓冲区
     byte[] array;
+    //netty的ByteBuf转化JDK nio ByteBuffer
     private ByteBuffer tmpNioBuf;
 
     /**
@@ -92,6 +98,10 @@ public class UnpooledHeapByteBuf extends AbstractReferenceCountedByteBuf {
         // NOOP
     }
 
+    /**
+     * 替换原来的字节数组
+     * @param initialArray
+     */
     private void setArray(byte[] initialArray) {
         array = initialArray;
         tmpNioBuf = null;
@@ -117,18 +127,30 @@ public class UnpooledHeapByteBuf extends AbstractReferenceCountedByteBuf {
         return array.length;
     }
 
+    /**
+     * 动态扩展缓冲区
+     * @param newCapacity
+     * @return
+     */
     @Override
     public ByteBuf capacity(int newCapacity) {
+        //容量检验
         checkNewCapacity(newCapacity);
 
         int oldCapacity = array.length;
         byte[] oldArray = array;
         if (newCapacity > oldCapacity) {
+            //新的缓冲区
             byte[] newArray = allocateArray(newCapacity);
+            //内存复制
             System.arraycopy(oldArray, 0, newArray, 0, oldArray.length);
+            //替换旧的字节数组
             setArray(newArray);
             freeArray(oldArray);
         } else if (newCapacity < oldCapacity) {
+            /**
+             * 不需要动态扩展，截取当前缓冲区创建一个新的子缓冲区
+             */
             byte[] newArray = allocateArray(newCapacity);
             int readerIndex = readerIndex();
             if (readerIndex < newCapacity) {
@@ -138,8 +160,13 @@ public class UnpooledHeapByteBuf extends AbstractReferenceCountedByteBuf {
                 }
                 System.arraycopy(oldArray, readerIndex, newArray, readerIndex, writerIndex - readerIndex);
             } else {
+                /**
+                 * 新的容量值小于读索引，没有可读字节数组需要复制到新创建的缓存区
+                 * 设置新的容量值
+                 */
                 setIndex(newCapacity, newCapacity);
             }
+            //替换旧的字节数组
             setArray(newArray);
             freeArray(oldArray);
         }
@@ -251,8 +278,18 @@ public class UnpooledHeapByteBuf extends AbstractReferenceCountedByteBuf {
         return readBytes;
     }
 
+    /**
+     *
+     * @param index
+     * @param src
+     * @param srcIndex the first index of the source
+     * @param length   the number of bytes to transfer
+     *
+     * @return
+     */
     @Override
     public ByteBuf setBytes(int index, ByteBuf src, int srcIndex, int length) {
+        //合法性校验
         checkSrcIndex(index, length, srcIndex, src.capacity());
         if (src.hasMemoryAddress()) {
             PlatformDependent.copyMemory(src.memoryAddress() + srcIndex, array, index, length);
@@ -264,6 +301,15 @@ public class UnpooledHeapByteBuf extends AbstractReferenceCountedByteBuf {
         return this;
     }
 
+    /**
+     * 字节数组复制
+     * ByteBuf 以set和get读写缓存方法不会修改读写索引
+     * @param index
+     * @param src
+     * @param srcIndex
+     * @param length
+     * @return
+     */
     @Override
     public ByteBuf setBytes(int index, byte[] src, int srcIndex, int length) {
         checkSrcIndex(index, length, srcIndex, src.length);
@@ -309,9 +355,16 @@ public class UnpooledHeapByteBuf extends AbstractReferenceCountedByteBuf {
         return 1;
     }
 
+    /**
+     * 转换ByteBuffer对象
+     * @param index
+     * @param length
+     * @return
+     */
     @Override
     public ByteBuffer nioBuffer(int index, int length) {
         ensureAccessible();
+        //selice返回当前ByteBuf的可读子缓冲区，不会修改ByteBuf的读写指针
         return ByteBuffer.wrap(array, index, length).slice();
     }
 

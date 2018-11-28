@@ -98,6 +98,8 @@ package io.netty.buffer;
  *
  * memoryMap[id]= depth_of_id  is defined above
  * depthMap[id]= x  indicates that the first node which is free to be allocated is at depth x (from root)
+ * Chunk主要用来组织和管理多个Page的内存分配和释放，Chunk中Page构成一个二叉树
+ * Page大小4字节，Chunk大小64字节（4*16）。整棵树5层
  */
 final class PoolChunk<T> implements PoolChunkMetric {
 

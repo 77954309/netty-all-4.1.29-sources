@@ -18,6 +18,7 @@ package io.netty.buffer;
 import io.netty.util.ReferenceCounted;
 
 /**
+ * ByteBuf的容器
  * A packet which is send or receive.
  */
 public interface ByteBufHolder extends ReferenceCounted {
