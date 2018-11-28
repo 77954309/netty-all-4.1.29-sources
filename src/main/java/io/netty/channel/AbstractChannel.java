@@ -39,6 +39,7 @@ import java.util.concurrent.RejectedExecutionException;
 
 /**
  * A skeletal {@link Channel} implementation.
+ * 聚合了Channel各种功能
  */
 public abstract class AbstractChannel extends DefaultAttributeMap implements Channel {
 
@@ -48,6 +49,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             new ClosedChannelException(), AbstractUnsafe.class, "flush0()");
     private static final ClosedChannelException ENSURE_OPEN_CLOSED_CHANNEL_EXCEPTION = ThrowableUtil.unknownStackTrace(
             new ClosedChannelException(), AbstractUnsafe.class, "ensureOpen(...)");
+    //链路关闭异常
     private static final ClosedChannelException CLOSE_CLOSED_CHANNEL_EXCEPTION = ThrowableUtil.unknownStackTrace(
             new ClosedChannelException(), AbstractUnsafe.class, "close(...)");
     private static final ClosedChannelException WRITE_CLOSED_CHANNEL_EXCEPTION = ThrowableUtil.unknownStackTrace(

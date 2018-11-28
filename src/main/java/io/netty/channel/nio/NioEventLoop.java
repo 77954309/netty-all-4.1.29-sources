@@ -696,6 +696,11 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         return unwrappedSelector;
     }
 
+    /**
+     * 是个非阻塞的调用，调用此方法会清除所有以前调用 wakeup 方法所得的结果
+     * @return
+     * @throws IOException
+     */
     int selectNow() throws IOException {
         try {
             return selector.selectNow();

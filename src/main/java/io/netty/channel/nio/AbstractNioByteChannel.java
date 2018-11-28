@@ -39,6 +39,7 @@ import static io.netty.channel.internal.ChannelUtils.WRITE_STATUS_SNDBUF_FULL;
 
 /**
  * {@link AbstractNioChannel} base class for {@link Channel}s that operate on bytes.
+ *
  */
 public abstract class AbstractNioByteChannel extends AbstractNioChannel {
     private static final ChannelMetadata METADATA = new ChannelMetadata(false, 16);
@@ -213,10 +214,11 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
         if (msg instanceof ByteBuf) {
             ByteBuf buf = (ByteBuf) msg;
             if (!buf.isReadable()) {
+                //消息不可读
                 in.remove();
                 return 0;
             }
-
+            //如果字节数为0，说明TCP缓冲区已经满
             final int localFlushedAmount = doWriteBytes(buf);
             if (localFlushedAmount > 0) {
                 in.progress(localFlushedAmount);
@@ -231,7 +233,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                 in.remove();
                 return 0;
             }
-
+            //文件传输
             long localFlushedAmount = doWriteFileRegion(region);
             if (localFlushedAmount > 0) {
                 in.progress(localFlushedAmount);
@@ -247,17 +249,25 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
         return WRITE_STATUS_SNDBUF_FULL;
     }
 
+    /**
+     *
+     * @param in 发送消息环形数组
+     * @throws Exception
+     */
     @Override
     protected void doWrite(ChannelOutboundBuffer in) throws Exception {
+        //循环发送次
         int writeSpinCount = config().getWriteSpinCount();
         do {
             Object msg = in.current();
             if (msg == null) {
                 // Wrote all messages.
+                //清除半包标识
                 clearOpWrite();
                 // Directly return here so incompleteWrite(...) is not called.
                 return;
             }
+            //发送消息不为空
             writeSpinCount -= doWriteInternal(in, msg);
         } while (writeSpinCount > 0);
 
@@ -333,6 +343,9 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
         }
     }
 
+    /**
+     * 清除写半包标识
+     */
     protected final void clearOpWrite() {
         final SelectionKey key = selectionKey();
         // Check first if the key is still valid as it may be canceled as part of the deregistration

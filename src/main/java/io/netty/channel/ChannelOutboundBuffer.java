@@ -222,6 +222,7 @@ public final class ChannelOutboundBuffer {
 
     /**
      * Notify the {@link ChannelPromise} of the current message about writing progress.
+     * 刷新线程继续发送之前没有发送完全的半包消息
      */
     public void progress(long amount) {
         Entry e = flushedEntry;

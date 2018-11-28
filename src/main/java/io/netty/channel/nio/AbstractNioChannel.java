@@ -45,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Abstract base class for {@link Channel} implementations which use a Selector based approach.
+ *
  */
 public abstract class AbstractNioChannel extends AbstractChannel {
 
@@ -53,9 +54,21 @@ public abstract class AbstractNioChannel extends AbstractChannel {
 
     private static final ClosedChannelException DO_CLOSE_CLOSED_CHANNEL_EXCEPTION = ThrowableUtil.unknownStackTrace(
             new ClosedChannelException(), AbstractNioChannel.class, "doClose()");
-
+    /**
+     * NIO Channel、NIOSocketChannel和NIoServerSocketChannel需要共用
+     * 定义一个java.nio.SocketChannel和java.nio.ServerSocketChannel的公共父类
+     * I/O操作
+     */
     private final SelectableChannel ch;
+    /**
+     * JDK SelectionKey的OP_READ
+     */
     protected final int readInterestOp;
+    /**
+     * SelectionKey是Channel注册EventLoop后返回的选择键
+     * Channel会面临多个业务线程的并发写操作 ，当SelectionKey
+     * 修改后，其它业务线程感知变化，设置volatile
+     */
     volatile SelectionKey selectionKey;
     boolean readPending;
     private final Runnable clearReadPendingRunnable = new Runnable() {
@@ -68,9 +81,16 @@ public abstract class AbstractNioChannel extends AbstractChannel {
     /**
      * The future of the current connection attempt.  If not null, subsequent
      * connection attempts will fail.
+     * 连接操作结果
      */
     private ChannelPromise connectPromise;
+    /**
+     * 连接超时定时器
+     */
     private ScheduledFuture<?> connectTimeoutFuture;
+    /**
+     * 请求通信地址
+     */
     private SocketAddress requestedRemoteAddress;
 
     /**
@@ -378,17 +398,31 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         return loop instanceof NioEventLoop;
     }
 
+    /**
+     * Channel注册
+     * OP_READ
+     *
+     * @throws Exception
+     */
     @Override
     protected void doRegister() throws Exception {
         boolean selected = false;
         for (;;) {
             try {
+                /**
+                 * 如果当前注册返回的selectionKey已经被取消，则抛出ClosedChannelException
+                 */
                 selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
                 return;
             } catch (CancelledKeyException e) {
                 if (!selected) {
                     // Force the Selector to select now as the "canceled" SelectionKey may still be
                     // cached and not removed because no Select.select(..) operation was called yet.
+                    /**
+                     * 将已经取消的selectionKey从多路复用器中删除掉
+                     * 是个非阻塞的调用，调用此方法会清除所有以前调用 wakeup 方法所得的结果
+                     * 继续下一次注册操作，成功的话则退出，否则仍然报异常，则说明jdk有bug
+                     */
                     eventLoop().selectNow();
                     selected = true;
                 } else {
@@ -405,6 +439,10 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         eventLoop().cancel(selectionKey());
     }
 
+    /**
+     * 准备处理读操作之前需要设置网络操作位读
+     * @throws Exception
+     */
     @Override
     protected void doBeginRead() throws Exception {
         // Channel.read() or ChannelHandlerContext.read() was called
@@ -416,7 +454,11 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         readPending = true;
 
         final int interestOps = selectionKey.interestOps();
+        /**
+         *
+         */
         if ((interestOps & readInterestOp) == 0) {
+            //设置读操作位
             selectionKey.interestOps(interestOps | readInterestOp);
         }
     }

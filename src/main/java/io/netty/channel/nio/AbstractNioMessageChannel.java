@@ -31,6 +31,7 @@ import java.util.List;
 
 /**
  * {@link AbstractNioChannel} base class for {@link Channel}s that operate on messages.
+ *
  */
 public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
     boolean inputShutdown;
@@ -122,6 +123,13 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
         }
     }
 
+    /**
+     *
+     * AbstractNioMessageChannel 和AbstractNioByteChannel消息发送实现比较相似
+     * 一个发送pojo对象，另一个发送ByteBuf或者FileRegion
+     * @param in
+     * @throws Exception
+     */
     @Override
     protected void doWrite(ChannelOutboundBuffer in) throws Exception {
         final SelectionKey key = selectionKey();
@@ -129,6 +137,9 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
 
         for (;;) {
             Object msg = in.current();
+            /**
+             * 为空，消息发送完成，清除写半包标志
+             */
             if (msg == null) {
                 // Wrote all messages.
                 if ((interestOps & SelectionKey.OP_WRITE) != 0) {
@@ -138,6 +149,7 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
             }
             try {
                 boolean done = false;
+                //WriteSpinCount写入次数
                 for (int i = config().getWriteSpinCount() - 1; i >= 0; i--) {
                     if (doWriteMessage(msg, in)) {
                         done = true;
@@ -146,9 +158,15 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
                 }
 
                 if (done) {
+                    /**
+                     * 发送消息全部发送出去，从缓存数组删除
+                     */
                     in.remove();
                 } else {
                     // Did not write all messages.
+                    /**
+                     * 设置半包写标识
+                     */
                     if ((interestOps & SelectionKey.OP_WRITE) == 0) {
                         key.interestOps(interestOps | SelectionKey.OP_WRITE);
                     }
