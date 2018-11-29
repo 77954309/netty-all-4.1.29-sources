@@ -214,6 +214,8 @@ import java.util.NoSuchElementException;
  * after the exchange.
  * ChannelHandler容器
  * 负责ChannelHandler查询、添加、替换和删除。
+ * Pipeline本身并不直接进行I/O操作，最终都是由Unsafe和Channel操作
+ *
  */
 public interface ChannelPipeline
         extends ChannelInboundInvoker, ChannelOutboundInvoker, Iterable<Entry<String, ChannelHandler>> {

@@ -244,28 +244,58 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         tail.prev = newCtx;
     }
 
+    /**
+     * 添加ChannelHandler方法
+     * @param baseName  the name of the existing handler
+     * @param name      the name of the handler to insert before
+     * @param handler   the handler to insert before
+     *
+     * @return
+     */
     @Override
     public final ChannelPipeline addBefore(String baseName, String name, ChannelHandler handler) {
         return addBefore(null, baseName, name, handler);
     }
 
+    /**
+     * ChannelPipeline 支持运行期动态修改，因此存在两种潜在的多线程并发访问场景
+     * I/O线程和用户线程的并发访问
+     * 用户多个线程之间并发访问
+     *
+     * @param group     the {@link EventExecutorGroup} which will be used to execute the {@link ChannelHandler}
+     *                  methods
+     * @param baseName  the name of the existing handler
+     * @param name      the name of the handler to insert before
+     * @param handler   the handler to insert before
+     *
+     * @return
+     */
     @Override
     public final ChannelPipeline addBefore(
             EventExecutorGroup group, String baseName, String name, ChannelHandler handler) {
+        //新插入的handler对应的ChannelHandlerContext
         final AbstractChannelHandlerContext newCtx;
+        //baseName对应的handler
         final AbstractChannelHandlerContext ctx;
+        //保证线程安全性
         synchronized (this) {
             checkMultiplicity(handler);
+            //ChannelHandler名重复性校验
             name = filterName(name, handler);
+            //ChannelHandler名
             ctx = getContextOrDie(baseName);
-
+            //新增ChannelHandler等参数构造一个新的DefaultChannelHandlerContext
             newCtx = newContext(group, name, handler);
-
+            //将新的newCtx插入在ctx的后面，这里其实就是双链表的插入
             addBefore0(ctx, newCtx);
 
             // If the registered is false it means that the channel was not registered on an eventloop yet.
             // In this case we add the context to the pipeline and add a task that will call
             // ChannelHandler.handlerAdded(...) once the channel is registered.
+            /**
+             * registered 为 false 表示 channel 尚未注册到 EventLoop 上。
+             * 添加一个任务到 PendingHandlerCallback 上，后续注册完毕，再调用 ChannelHandler.handlerAdded
+             */
             if (!registered) {
                 newCtx.setAddPending();
                 callHandlerCallbackLater(newCtx, true);
@@ -278,12 +308,14 @@ public class DefaultChannelPipeline implements ChannelPipeline {
                 executor.execute(new Runnable() {
                     @Override
                     public void run() {
+                        //回调添加完事件
                         callHandlerAdded0(newCtx);
                     }
                 });
                 return this;
             }
         }
+        //发送新增ChannelHandlerContext的通知
         callHandlerAdded0(newCtx);
         return this;
     }
@@ -295,10 +327,17 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         ctx.prev = newCtx;
     }
 
+    /**
+     * ChannelHandler名重复性校验
+     * @param name
+     * @param handler
+     * @return
+     */
     private String filterName(String name, ChannelHandler handler) {
         if (name == null) {
             return generateName(handler);
         }
+        //ChannelHandler名重复性校验
         checkDuplicateName(name);
         return name;
     }
@@ -629,6 +668,10 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
     }
 
+    /**
+     * 回调添加完事件
+     * @param ctx
+     */
     private void callHandlerAdded0(final AbstractChannelHandlerContext ctx) {
         try {
             // We must call setAddComplete before calling handlerAdded. Otherwise if the handlerAdded method generates
@@ -936,6 +979,11 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
     }
 
+    /**
+     * pipeline 中以fireXXX命名的方法都是从I/O线程流向用户业务Handler的inbound事件
+     * 判断当前Channel是否配置自动读取
+     * @return
+     */
     @Override
     public final ChannelPipeline fireChannelActive() {
         AbstractChannelHandlerContext.invokeChannelActive(head);
@@ -988,6 +1036,14 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return tail.connect(remoteAddress);
     }
 
+    /**
+     * 客户端连接操作
+     * 它直接调用TailHandler的connect,最终会调用到HeadHandler的connect方法
+     * pipeline仅仅负责事件调度
+     * @param remoteAddress
+     * @param localAddress
+     * @return
+     */
     @Override
     public final ChannelFuture connect(SocketAddress remoteAddress, SocketAddress localAddress) {
         return tail.connect(remoteAddress, localAddress);
@@ -1096,6 +1152,10 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return voidPromise;
     }
 
+    /**
+     * ChannelHandler名重复性校验
+     * @param name
+     */
     private void checkDuplicateName(String name) {
         if (context0(name) != null) {
             throw new IllegalArgumentException("Duplicate handler name: " + name);
