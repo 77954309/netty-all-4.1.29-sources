@@ -29,19 +29,34 @@ import static java.lang.Math.min;
  * read fully filled the allocated buffer.  It gradually decreases the expected
  * number of readable bytes if the read operation was not able to fill a certain
  * amount of the allocated buffer two times consecutively.  Otherwise, it keeps
- * returning the same prediction.
+ * returning the same prediction.、
+ * 缓冲区大小可以动态调整的ByteBuf分配器
  */
 public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufAllocator {
 
     static final int DEFAULT_MINIMUM = 64;
     static final int DEFAULT_INITIAL = 1024;
     static final int DEFAULT_MAXIMUM = 65536;
-
+    /**
+     * 动态调整容量时候步进参数
+     */
     private static final int INDEX_INCREMENT = 4;
     private static final int INDEX_DECREMENT = 1;
 
     private static final int[] SIZE_TABLE;
 
+    /**
+     * SIZE_TABLE的扩张
+     * 0-->16 1-->32  2-->48 3-->64 4-->80
+     * 。。。。。 31 --> 512
+     *
+     * 32-->1024 33-->2048 ...... 52-->1073741824
+     *
+     * 当容量小于512时候，每次调+16，大于512,前一位的两倍
+     *
+     *
+     *
+     */
     static {
         List<Integer> sizeTable = new ArrayList<Integer>();
         for (int i = 16; i < 512; i += 16) {
@@ -64,6 +79,11 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
     @Deprecated
     public static final AdaptiveRecvByteBufAllocator DEFAULT = new AdaptiveRecvByteBufAllocator();
 
+    /**
+     * 查找容量向量表对应的索引，二分查找
+     * @param size
+     * @return
+     */
     private static int getSizeTableIndex(final int size) {
         for (int low = 0, high = SIZE_TABLE.length - 1;;) {
             if (high < low) {
@@ -88,11 +108,19 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
         }
     }
 
+    /**
+     *
+     */
     private final class HandleImpl extends MaxMessageHandle {
+        //最小索引
         private final int minIndex;
+        //最大索引
         private final int maxIndex;
+        //当前索引
         private int index;
+        //下一次预分配的Buffer
         private int nextReceiveBufferSize;
+        //是否立即执行容量收缩操作
         private boolean decreaseNow;
 
         public HandleImpl(int minIndex, int maxIndex, int initial) {
@@ -120,7 +148,13 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
             return nextReceiveBufferSize;
         }
 
+        /**
+         * NioSocketChannel执行完读操作后，会计算获得本次轮询读取的总字节数，它就是参数actualReadBytes
+         * record方法，根据实际读取的字节数对ByteBuf进行动态伸缩和扩张
+         * @param actualReadBytes
+         */
         private void record(int actualReadBytes) {
+
             if (actualReadBytes <= SIZE_TABLE[max(0, index - INDEX_DECREMENT - 1)]) {
                 if (decreaseNow) {
                     index = max(index - INDEX_DECREMENT, minIndex);

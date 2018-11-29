@@ -145,6 +145,7 @@ public interface ChannelConfig {
      * It is similar to what a spin lock is used for in concurrency programming.
      * It improves memory utilization and write throughput depending on
      * the platform that JVM runs on.  The default value is {@code 16}.
+     * WriteSpinCount写入次数
      */
     int getWriteSpinCount();
 

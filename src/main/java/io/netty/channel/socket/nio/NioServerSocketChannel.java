@@ -41,6 +41,7 @@ import java.util.Map;
 /**
  * A {@link io.netty.channel.socket.ServerSocketChannel} implementation which uses
  * NIO selector based implementation to accept new connections.
+ * 读取操作就是接收客户端连接，创建NioSocketChannel对象
  */
 public class NioServerSocketChannel extends AbstractNioMessageChannel
                              implements io.netty.channel.socket.ServerSocketChannel {
@@ -64,7 +65,7 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
                     "Failed to open a server socket.", e);
         }
     }
-
+    //配置TCP参数
     private final ServerSocketChannelConfig config;
 
     /**
@@ -127,6 +128,7 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
     @Override
     protected void doBind(SocketAddress localAddress) throws Exception {
         if (PlatformDependent.javaVersion() >= 7) {
+            //getBacklog 允许客户端排队最大长度
             javaChannel().bind(localAddress, config.getBacklog());
         } else {
             javaChannel().socket().bind(localAddress, config.getBacklog());
@@ -138,8 +140,15 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
         javaChannel().close();
     }
 
+    /**
+     *
+     * @param buf
+     * @return
+     * @throws Exception
+     */
     @Override
     protected int doReadMessages(List<Object> buf) throws Exception {
+        //接收客户端
         SocketChannel ch = SocketUtils.accept(javaChannel());
 
         try {
@@ -161,6 +170,14 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
     }
 
     // Unnecessary stuff
+
+    /**
+     * 这些方法是是客户端Channel相关的，因此服务端无需实现，如果这些方法误调用，返回UnsupportedOperationException异常
+     * @param remoteAddress
+     * @param localAddress
+     * @return
+     * @throws Exception
+     */
     @Override
     protected boolean doConnect(
             SocketAddress remoteAddress, SocketAddress localAddress) throws Exception {

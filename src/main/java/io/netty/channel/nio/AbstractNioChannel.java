@@ -235,6 +235,9 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         void forceFlush();
     }
 
+    /**
+     * AbstractUnsafe nio实现
+     */
     protected abstract class AbstractNioUnsafe extends AbstractUnsafe implements NioUnsafe {
 
         protected final void removeReadOp() {
@@ -272,14 +275,19 @@ public abstract class AbstractNioChannel extends AbstractChannel {
 
                 boolean wasActive = isActive();
                 if (doConnect(remoteAddress, localAddress)) {
+                    //连接成功
                     fulfillConnectPromise(promise, wasActive);
                 } else {
+                    //暂时没有连接上
                     connectPromise = promise;
                     requestedRemoteAddress = remoteAddress;
 
                     // Schedule connect timeout.
                     int connectTimeoutMillis = config().getConnectTimeoutMillis();
                     if (connectTimeoutMillis > 0) {
+                        /**
+                         * 连接超时，定时任务
+                         */
                         connectTimeoutFuture = eventLoop().schedule(new Runnable() {
                             @Override
                             public void run() {
@@ -292,7 +300,9 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                             }
                         }, connectTimeoutMillis, TimeUnit.MILLISECONDS);
                     }
-
+                    /**
+                     * 连接结果监听器
+                     */
                     promise.addListener(new ChannelFutureListener() {
                         @Override
                         public void operationComplete(ChannelFuture future) throws Exception {
@@ -312,6 +322,11 @@ public abstract class AbstractNioChannel extends AbstractChannel {
             }
         }
 
+        /**
+         * 监听网络读操作位
+         * @param promise
+         * @param wasActive
+         */
         private void fulfillConnectPromise(ChannelPromise promise, boolean wasActive) {
             if (promise == null) {
                 // Closed via cancellation and the promise has been notified already.
@@ -348,6 +363,9 @@ public abstract class AbstractNioChannel extends AbstractChannel {
             closeIfClosed();
         }
 
+        /**
+         * 客户端接收到服务端的TCP握手应答消息
+         */
         @Override
         public final void finishConnect() {
             // Note this method is invoked by the event loop only if the connection attempt was
@@ -357,6 +375,12 @@ public abstract class AbstractNioChannel extends AbstractChannel {
 
             try {
                 boolean wasActive = isActive();
+                /**
+                 * 判断连接结果
+                 * 连接成功 true
+                 * 连接失败 false
+                 * 发生链路关闭，中断等异常，连接失败
+                 */
                 doFinishConnect();
                 fulfillConnectPromise(connectPromise, wasActive);
             } catch (Throwable t) {
@@ -364,6 +388,10 @@ public abstract class AbstractNioChannel extends AbstractChannel {
             } finally {
                 // Check for null as the connectTimeoutFuture is only created if a connectTimeoutMillis > 0 is used
                 // See https://github.com/netty/netty/issues/1770
+                /**
+                 * 连接超时判断（是否收到服务端的ACK应答消息）
+                 * 关闭客户端连接，将SocketChannel从Reactor线程的多路复用器上摘除，释放资源
+                 */
                 if (connectTimeoutFuture != null) {
                     connectTimeoutFuture.cancel(false);
                 }
@@ -470,6 +498,12 @@ public abstract class AbstractNioChannel extends AbstractChannel {
 
     /**
      * Finish the connect
+     */
+    /**
+     * 判断连接结果
+     * 连接成功 true
+     * 连接失败 false
+     * 发生链路关闭，中断等异常，连接失败
      */
     protected abstract void doFinishConnect() throws Exception;
 

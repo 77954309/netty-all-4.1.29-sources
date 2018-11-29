@@ -130,6 +130,7 @@ public final class ChannelOutboundBuffer {
     /**
      * Add a flush to this {@link ChannelOutboundBuffer}. This means all previous added messages are marked as flushed
      * and so you will be able to handle them.
+     * 将发生环形数组的unflushed指针修改为tail,标识本次要发生消息缓冲区的范围
      */
     public void addFlush() {
         // There is no need to process all entries if there was already a flush before and no new messages
@@ -184,6 +185,12 @@ public final class ChannelOutboundBuffer {
         decrementPendingOutboundBytes(size, true, true);
     }
 
+    /**
+     * 减去已经发送的字节数
+     * @param size
+     * @param invokeLater
+     * @param notifyWritability
+     */
     private void decrementPendingOutboundBytes(long size, boolean invokeLater, boolean notifyWritability) {
         if (size == 0) {
             return;
@@ -250,13 +257,14 @@ public final class ChannelOutboundBuffer {
 
         ChannelPromise promise = e.promise;
         int size = e.pendingSize;
-
+        //更新flushed
         removeEntry(e);
 
         if (!e.cancelled) {
             // only release message, notify and decrement if it was not canceled before.
             ReferenceCountUtil.safeRelease(msg);
             safeSuccess(promise);
+            //减去已经发送的字节数
             decrementPendingOutboundBytes(size, false, true);
         }
 
@@ -302,6 +310,10 @@ public final class ChannelOutboundBuffer {
         return true;
     }
 
+    /**
+     * 更新flushed
+     * @param e
+     */
     private void removeEntry(Entry e) {
         if (-- flushed == 0) {
             // processed everything

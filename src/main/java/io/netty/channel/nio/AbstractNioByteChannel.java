@@ -131,6 +131,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
 
         @Override
         public final void read() {
+            //客户端连接参数
             final ChannelConfig config = config();
             if (shouldBreakReadReady(config)) {
                 clearReadPending();
@@ -138,6 +139,10 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             }
             final ChannelPipeline pipeline = pipeline();
             final ByteBufAllocator allocator = config.getAllocator();
+            /**
+             * AdaptiveRecvByteBufAllocator 缓冲区大小可以动态调整的ByteBuf分配器
+             * FixedRecvByteBufAllocator
+             */
             final RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();
             allocHandle.reset(config);
 
@@ -146,6 +151,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             try {
                 do {
                     byteBuf = allocHandle.allocate(allocator);
+                    //本次可读最大长度
                     allocHandle.lastBytesRead(doReadBytes(byteBuf));
                     if (allocHandle.lastBytesRead() <= 0) {
                         // nothing was read. release the buffer.
@@ -250,7 +256,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
     }
 
     /**
-     *
+     * 发送消息的个数（unflushed-flush）
      * @param in 发送消息环形数组
      * @throws Exception
      */

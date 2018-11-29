@@ -474,10 +474,15 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
 
             AbstractChannel.this.eventLoop = eventLoop;
-
+            /**
+             * 如果是同一个线程，则不存在多线程并发操作问题
+             */
             if (eventLoop.inEventLoop()) {
                 register0(promise);
             } else {
+                /**
+                 * 如果是由用户线程或其他线程发起注册操作
+                 */
                 try {
                     eventLoop.execute(new Runnable() {
                         @Override
@@ -500,6 +505,9 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             try {
                 // check if the channel is still open as it could be closed in the mean time when the register
                 // call was outside of the eventLoop
+                /**
+                 * Channel是否打开
+                 */
                 if (!promise.setUncancellable() || !ensureOpen(promise)) {
                     return;
                 }
@@ -535,6 +543,13 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
         }
 
+        /**
+         * 绑定指定端口
+         * 服务端：监听端口，可以设置backlog参数
+         * 客户端：客户端Channel，本地绑定Socket地址
+         * @param localAddress
+         * @param promise
+         */
         @Override
         public final void bind(final SocketAddress localAddress, final ChannelPromise promise) {
             assertEventLoop();
@@ -558,6 +573,9 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             boolean wasActive = isActive();
             try {
+                /**
+                 * NioSocketChannel和NioServerSocketChannel有不同实现
+                 */
                 doBind(localAddress);
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
@@ -577,6 +595,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             safeSetSuccess(promise);
         }
 
+        /**
+         * 用于客户端或者服务主动关闭连接
+         * @param promise
+         */
         @Override
         public final void disconnect(final ChannelPromise promise) {
             assertEventLoop();
@@ -686,6 +708,13 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             pipeline.fireUserEventTriggered(ChannelOutputShutdownEvent.INSTANCE);
         }
 
+        /**
+         *
+         * @param promise
+         * @param cause
+         * @param closeCause
+         * @param notify
+         */
         private void close(final ChannelPromise promise, final Throwable cause,
                            final ClosedChannelException closeCause, final boolean notify) {
             if (!promise.setUncancellable()) {
@@ -744,6 +773,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 } finally {
                     if (outboundBuffer != null) {
                         // Fail all the queued messages.
+                        //释放缓冲区
                         outboundBuffer.failFlushed(cause, notify);
                         outboundBuffer.close(closeCause);
                     }
@@ -756,6 +786,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                         }
                     });
                 } else {
+                    //Channel从多路复用器上取消注册
                     fireChannelInactiveAndDeregister(wasActive);
                 }
             }
@@ -859,6 +890,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
         }
 
+        /**
+         * 实际将消息添加到环形数组中，并不是真正写Channel
+         * @param msg
+         * @param promise
+         */
         @Override
         public final void write(Object msg, ChannelPromise promise) {
             assertEventLoop();
@@ -891,6 +927,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             outboundBuffer.addMessage(msg, size, promise);
         }
 
+        /**
+         * 负责将发生缓冲区中的待发送消息全部写入Channel中，并发送给通信方
+         *
+         */
         @Override
         public final void flush() {
             assertEventLoop();
@@ -899,7 +939,9 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             if (outboundBuffer == null) {
                 return;
             }
-
+            /**
+             * 将发生环形数组的unflushed指针修改为tail,标识本次要发生消息缓冲区的范围
+             */
             outboundBuffer.addFlush();
             flush0();
         }
@@ -965,6 +1007,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             return unsafeVoidPromise;
         }
 
+        /**
+         * Channel是否打开
+         * @param promise
+         * @return
+         */
         protected final boolean ensureOpen(ChannelPromise promise) {
             if (isOpen()) {
                 return true;
@@ -1065,6 +1112,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
      * Is called after the {@link Channel} is registered with its {@link EventLoop} as part of the register process.
      *
      * Sub-classes may override this method
+     * AbstractNioUnsafe
      */
     protected void doRegister() throws Exception {
         // NOOP
