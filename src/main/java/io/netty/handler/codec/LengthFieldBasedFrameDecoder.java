@@ -15,12 +15,12 @@
  */
 package io.netty.handler.codec;
 
-import java.nio.ByteOrder;
-import java.util.List;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.serialization.ObjectDecoder;
+
+import java.nio.ByteOrder;
+import java.util.List;
 
 /**
  * A decoder that splits the received {@link ByteBuf}s dynamically by the
@@ -180,6 +180,7 @@ import io.netty.handler.codec.serialization.ObjectDecoder;
  * +------+--------+------+----------------+      +------+----------------+
  * </pre>
  * @see LengthFieldPrepender
+ * 基于消息长度的半包解码器
  */
 public class LengthFieldBasedFrameDecoder extends ByteToMessageDecoder {
 
@@ -405,6 +406,10 @@ public class LengthFieldBasedFrameDecoder extends ByteToMessageDecoder {
      *                          be created.
      */
     protected Object decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
+        /**
+         * 判断discardingTooLongFrame标识
+         * 是否是需要丢弃的当前可读字节缓冲区
+         */
         if (discardingTooLongFrame) {
             discardingTooLongFrame(in);
         }

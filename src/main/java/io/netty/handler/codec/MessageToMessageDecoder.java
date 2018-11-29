@@ -47,7 +47,7 @@ import java.util.List;
  * Be aware that you need to call {@link ReferenceCounted#retain()} on messages that are just passed through if they
  * are of type {@link ReferenceCounted}. This is needed as the {@link MessageToMessageDecoder} will call
  * {@link ReferenceCounted#release()} on decoded messages.
- *
+ * 解码器 将一个pojo对象解码成另一个pojo对象
  */
 public abstract class MessageToMessageDecoder<I> extends ChannelInboundHandlerAdapter {
 
@@ -81,12 +81,15 @@ public abstract class MessageToMessageDecoder<I> extends ChannelInboundHandlerAd
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         CodecOutputList out = CodecOutputList.newInstance();
         try {
+            //类型参数校验器看是否可接收的类型
             if (acceptInboundMessage(msg)) {
                 @SuppressWarnings("unchecked")
                 I cast = (I) msg;
                 try {
+                    //解码
                     decode(ctx, cast, out);
                 } finally {
+                    //释放msg对象
                     ReferenceCountUtil.release(cast);
                 }
             } else {
@@ -99,8 +102,10 @@ public abstract class MessageToMessageDecoder<I> extends ChannelInboundHandlerAd
         } finally {
             int size = out.size();
             for (int i = 0; i < size; i ++) {
+                //通知后续ChannelHandler继续处理
                 ctx.fireChannelRead(out.getUnsafe(i));
             }
+            //释放CodecOutputList
             out.recycle();
         }
     }
