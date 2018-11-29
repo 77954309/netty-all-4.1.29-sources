@@ -1,4 +1,9 @@
 # netty-all-4.1.29-sources
+Netty 服务端创建时序图
+![netty_server1](https://github.com/77954309/picture_warehouse/blob/master/imgs/netty_server1.png)<br>
+Netty 客户端创建时序图
+![netty_client1](https://github.com/77954309/picture_warehouse/blob/master/imgs/netty_client1.png)<br>
+
 注解netty4 <br>
 ByteBuf主要功能类继承关系
 ![Image1](https://github.com/77954309/picture_warehouse/blob/master/imgs/bytebuf1.png)<br>
