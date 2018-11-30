@@ -49,14 +49,16 @@ import java.util.List;
  * + 0x000E | "HELLO, WORLD" |
  * +--------+----------------+
  * </pre>
+ * 负责在待发送的ByteBuf消息头中增加一个长度字段标识消息的长度
+ *
  */
 @Sharable
 public class LengthFieldPrepender extends MessageToMessageEncoder<ByteBuf> {
 
-    private final ByteOrder byteOrder;
-    private final int lengthFieldLength;
+    private final ByteOrder byteOrder;//表示字节流数据是大端还是小端
+    private final int lengthFieldLength;//长度域长度 表示Length字段本身占用的字节数,只可以指定 1, 2, 3, 4, 或 8
     private final boolean lengthIncludesLengthFieldLength;
-    private final int lengthAdjustment;
+    private final int lengthAdjustment;//包体长度调整的大小
 
     /**
      * Creates a new instance.
@@ -158,7 +160,9 @@ public class LengthFieldPrepender extends MessageToMessageEncoder<ByteBuf> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
+        //真实可读数据+Length字段调整值
         int length = msg.readableBytes() + lengthAdjustment;
+        //表示Length字段本身占用的字节数是否包含在Length字段表示的值中。
         if (lengthIncludesLengthFieldLength) {
             length += lengthFieldLength;
         }
@@ -167,7 +171,7 @@ public class LengthFieldPrepender extends MessageToMessageEncoder<ByteBuf> {
             throw new IllegalArgumentException(
                     "Adjusted frame length (" + length + ") is less than zero");
         }
-
+        //根据lengthFieldLength指定的值(1、2、3、4、8)，创建一个ByteBuffer实例，写入length的值
         switch (lengthFieldLength) {
         case 1:
             if (length >= 256) {
@@ -199,6 +203,7 @@ public class LengthFieldPrepender extends MessageToMessageEncoder<ByteBuf> {
         default:
             throw new Error("should not reach here");
         }
+        //最后，再将msg本身添加到List中(msg.retain是增加一次引用，返回的还是msg本身)
         out.add(msg.retain());
     }
 }

@@ -42,6 +42,7 @@ import io.netty.util.internal.TypeParameterMatcher;
  *         }
  *     }
  * </pre>
+ * 编码  用户的pojo对象编码称ByteBuf,以便通过网络传输
  */
 public abstract class MessageToByteEncoder<I> extends ChannelOutboundHandlerAdapter {
 
@@ -90,6 +91,7 @@ public abstract class MessageToByteEncoder<I> extends ChannelOutboundHandlerAdap
     /**
      * Returns {@code true} if the given message should be handled. If {@code false} it will be passed to the next
      * {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
+     * 判断编码器是否支持需要发送的消息
      */
     public boolean acceptOutboundMessage(Object msg) throws Exception {
         return matcher.match(msg);
@@ -99,19 +101,26 @@ public abstract class MessageToByteEncoder<I> extends ChannelOutboundHandlerAdap
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         ByteBuf buf = null;
         try {
+            /**
+             * 判断编码器是否支持需要发送的消息
+             * 不支持直接透传
+             */
             if (acceptOutboundMessage(msg)) {
                 @SuppressWarnings("unchecked")
                 I cast = (I) msg;
+                //判断缓冲区类型
                 buf = allocateBuffer(ctx, cast, preferDirect);
                 try {
                     encode(ctx, cast, buf);
                 } finally {
+                    //释放编码对象
                     ReferenceCountUtil.release(cast);
                 }
 
                 if (buf.isReadable()) {
                     ctx.write(buf, promise);
                 } else {
+                    //释放
                     buf.release();
                     ctx.write(Unpooled.EMPTY_BUFFER, promise);
                 }
@@ -133,6 +142,7 @@ public abstract class MessageToByteEncoder<I> extends ChannelOutboundHandlerAdap
     /**
      * Allocate a {@link ByteBuf} which will be used as argument of {@link #encode(ChannelHandlerContext, I, ByteBuf)}.
      * Sub-classes may override this method to return {@link ByteBuf} with a perfect matching {@code initialCapacity}.
+     * 判断缓冲区类型
      */
     protected ByteBuf allocateBuffer(ChannelHandlerContext ctx, @SuppressWarnings("unused") I msg,
                                boolean preferDirect) throws Exception {

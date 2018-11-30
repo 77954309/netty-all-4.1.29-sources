@@ -47,6 +47,7 @@ import java.util.List;
  * Be aware that you need to call {@link ReferenceCounted#retain()} on messages that are just passed through if they
  * are of type {@link ReferenceCounted}. This is needed as the {@link MessageToMessageEncoder} will call
  * {@link ReferenceCounted#release()} on encoded messages.
+ * 编码 pojo对象编码成另一个pojo对象
  */
 public abstract class MessageToMessageEncoder<I> extends ChannelOutboundHandlerAdapter {
 
@@ -71,6 +72,9 @@ public abstract class MessageToMessageEncoder<I> extends ChannelOutboundHandlerA
     /**
      * Returns {@code true} if the given message should be handled. If {@code false} it will be passed to the next
      * {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
+     *
+     * 判断编码器是否支持需要发送的消息
+     *
      */
     public boolean acceptOutboundMessage(Object msg) throws Exception {
         return matcher.match(msg);
@@ -80,6 +84,10 @@ public abstract class MessageToMessageEncoder<I> extends ChannelOutboundHandlerA
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         CodecOutputList out = null;
         try {
+            /**
+             * 判断编码器是否支持需要发送的消息
+             * 不支持直接透传
+             */
             if (acceptOutboundMessage(msg)) {
                 out = CodecOutputList.newInstance();
                 @SuppressWarnings("unchecked")
@@ -121,6 +129,7 @@ public abstract class MessageToMessageEncoder<I> extends ChannelOutboundHandlerA
                         } else {
                             p = ctx.newPromise();
                         }
+                        //循环发送pojo对象
                         ctx.write(out.getUnsafe(i), p);
                     }
                     ctx.write(out.getUnsafe(sizeMinusOne), promise);
