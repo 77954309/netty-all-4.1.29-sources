@@ -30,6 +30,14 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import static io.netty.util.internal.ObjectUtil.checkNotNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+/**
+ * 可写Future,扩展Future
+ *
+ * notify 如果处于等待所有线程都在等待同一个条件，每次只有一个线程从这个条件唤醒，那么用notify
+ * notifyAll 唤醒所有等待线程
+ *
+ * @param <V>
+ */
 public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(DefaultPromise.class);
     private static final InternalLogger rejectedExecutionLogger =
@@ -153,7 +161,9 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
     @Override
     public Promise<V> addListener(GenericFutureListener<? extends Future<? super V>> listener) {
         checkNotNull(listener, "listener");
-
+        /**
+         * 可能存在I/O线程和用户线程同时操作Promise
+         */
         synchronized (this) {
             addListener0(listener);
         }
@@ -221,11 +231,15 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
         if (Thread.interrupted()) {
             throw new InterruptedException(toString());
         }
-
+        //netty 认为是当前线程是死锁状态
         checkDeadLock();
 
         synchronized (this) {
+            //已完成任务
             while (!isDone()) {
+                /**
+                 * 循环判断防止线程被意外唤醒导致功能异常
+                 */
                 incWaiters();
                 try {
                     wait();

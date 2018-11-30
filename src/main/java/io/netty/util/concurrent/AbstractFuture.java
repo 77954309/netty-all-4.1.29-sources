@@ -24,6 +24,7 @@ import java.util.concurrent.TimeoutException;
  * Abstract {@link Future} implementation which does not allow for cancellation.
  *
  * @param <V>
+ *     异步操作I/O
  */
 public abstract class AbstractFuture<V> implements Future<V> {
     /**
@@ -61,9 +62,11 @@ public abstract class AbstractFuture<V> implements Future<V> {
      */
     @Override
     public V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        //无限阻塞
         if (await(timeout, unit)) {
             Throwable cause = cause();
             if (cause == null) {
+                //获取结果
                 return getNow();
             }
             if (cause instanceof CancellationException) {

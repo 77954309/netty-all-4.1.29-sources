@@ -16,7 +16,11 @@ ChannelPipeline是ChannelHandler的容器，它负责ChannelHandler的管理和�
 ChannelHandler负责对I/O事件或者I/O操作进行拦截和处理
 ![Image4](https://github.com/77954309/picture_warehouse/blob/master/imgs/ChannelHandler1.png)<br>
 NioEventLoop 负责I/O读写，系统Task(局部无锁化),定时任务
-
+![Image5](https://github.com/77954309/picture_warehouse/blob/master/imgs/nioeventloop1.png)<br>
+ChannelFuture 异步I/O操作相关。（AbstractFuture类里面有相关注解）<br>
+Future<-ChannelProgressiveFuture/ChannelProgressivePromise/ChannelPromise<-DefaultChannelProgressivePromise/DefaultChannelPromise<br>
+Promise是可写的Future,Future自身并没有写操作的相关接口，Netty通过Promise对Future进行扩展，用于设置I/O操作的结果。<br>
+DefaultPromise类里面有相关注解<br>
 
 
 
