@@ -15,6 +15,8 @@ ChannelPipeline是ChannelHandler的容器，它负责ChannelHandler的管理和�
 类图继承关系：Iterable<-ChannelPipeline<-DefaultChannelPipeline<br>
 ChannelHandler负责对I/O事件或者I/O操作进行拦截和处理
 ![Image4](https://github.com/77954309/picture_warehouse/blob/master/imgs/ChannelHandler1.png)<br>
+NioEventLoop 负责I/O读写，系统Task(局部无锁化),定时任务
+
 
 
 

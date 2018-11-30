@@ -59,7 +59,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     private static final int ST_SHUTTING_DOWN = 3;
     private static final int ST_SHUTDOWN = 4;
     private static final int ST_TERMINATED = 5;
-
+    //这里有一个WAKEUP_TASK，它是一个标记任务。使用这个标记任务是为了线程能正确退出.
     private static final Runnable WAKEUP_TASK = new Runnable() {
         @Override
         public void run() {
@@ -225,12 +225,14 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      */
     protected Runnable takeTask() {
         assert inEventLoop();
+        //任务队列必须是阻塞队列
         if (!(taskQueue instanceof BlockingQueue)) {
             throw new UnsupportedOperationException();
         }
 
         BlockingQueue<Runnable> taskQueue = (BlockingQueue<Runnable>) this.taskQueue;
         for (;;) {
+            // 取得调度任务队列的头部任务，注意peek并不移除
             ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
             if (scheduledTask == null) {
                 Runnable task = null;
@@ -244,6 +246,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                 }
                 return task;
             } else {
+                //// 调度任务的到期时间间隔
                 long delayNanos = scheduledTask.delayNanos();
                 Runnable task = null;
                 if (delayNanos > 0) {
@@ -259,6 +262,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                     // scheduled tasks are never executed if there is always one task in the taskQueue.
                     // This is for example true for the read task of OIO Transport
                     // See https://github.com/netty/netty/issues/1614
+                    // 注意这里执行有两种情况：1.任务队列中没有待执行任务，2.调度任务已到期
                     fetchFromScheduledTaskQueue();
                     task = taskQueue.poll();
                 }
@@ -271,11 +275,13 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     }
 
     private boolean fetchFromScheduledTaskQueue() {
+        // 等价于ScheduledFutureTask.nanoTime()
         long nanoTime = AbstractScheduledEventExecutor.nanoTime();
         Runnable scheduledTask  = pollScheduledTask(nanoTime);
         while (scheduledTask != null) {
             if (!taskQueue.offer(scheduledTask)) {
                 // No space left in the task queue add it back to the scheduledTaskQueue so we pick it up again.
+                // 任务队列已满，则重新添加到调度任务队列
                 scheduledTaskQueue().add((ScheduledFutureTask<?>) scheduledTask);
                 return false;
             }
@@ -390,13 +396,15 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      * the tasks in the task queue and returns if it ran longer than {@code timeoutNanos}.
      */
     protected boolean runAllTasks(long timeoutNanos) {
+        //定时任务处理
         fetchFromScheduledTaskQueue();
+        //从taskQueue提一个任务，如果为空执行所有tailTasks
         Runnable task = pollTask();
         if (task == null) {
             afterRunningAllTasks();
             return false;
         }
-
+        //计算出超时时间 = 当前 nanoTime + timeoutNanos
         final long deadline = ScheduledFutureTask.nanoTime() + timeoutNanos;
         long runTasks = 0;
         long lastExecutionTime;
@@ -407,6 +415,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
             // Check timeout every 64 tasks because nanoTime() is relatively expensive.
             // XXX: Hard-coded value - will make it configurable if it is really a problem.
+            //当执行任务次数大于64判断是否超时，防止长时间独占CPU
             if ((runTasks & 0x3F) == 0) {
                 lastExecutionTime = ScheduledFutureTask.nanoTime();
                 if (lastExecutionTime >= deadline) {
@@ -422,6 +431,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
 
         afterRunningAllTasks();
+        //更新上一次执行时间
         this.lastExecutionTime = lastExecutionTime;
         return true;
     }
@@ -470,6 +480,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         if (!inEventLoop || state == ST_SHUTTING_DOWN) {
             // Use offer as we actually only need this to unblock the thread and if offer fails we do not care as there
             // is already something in the queue.
+            // 非本类原生线程或者本类原生线程需要关闭时，添加一个标记任务使线程从take()返回。
+            // offer失败表明任务队列已有任务，从而线程可以从take()返回故不处理
             taskQueue.offer(WAKEUP_TASK);
         }
     }
